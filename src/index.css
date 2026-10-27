@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@theme {
+  --color-forest: #234b38;
+  --color-forest-deep: #1a3a2b;
+  --color-ivory: #f7f3ea;
+  --color-paper: #fbf8f1;
+  --color-cream: #efe8d8;
+  --color-sage: #a9b8a0;
+  --color-tomato: #d85c43;
+  --color-tomato-ink: #a63e29; /* darker tomato for small text (AA on ivory) */
+  --color-butter: #f0cb78;
+  --color-ink: #252923;
+
+  --font-display: "DM Serif Display", Georgia, "Times New Roman", serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --animate-rise: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-fade-in: fade-in 0.22s ease-out both;
+  --animate-fade-out: fade-out 0.18s ease-in both;
+  --animate-panel-in: panel-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-panel-out: panel-out 0.18s ease-in both;
+  --animate-stamp: stamp 0.55s cubic-bezier(0.3, 1.4, 0.5, 1) 0.15s both;
+  --animate-tick: tick 0.9s ease-out both;
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes panel-in {
+    from { opacity: 0; transform: translateY(24px) scale(0.985); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes panel-out {
+    from { opacity: 1; transform: none; }
+    to { opacity: 0; transform: translateY(12px) scale(0.99); }
+  }
+  @keyframes stamp {
+    0% { opacity: 0; transform: rotate(-14deg) scale(1.8); }
+    100% { opacity: 1; transform: rotate(-8deg) scale(1); }
+  }
+  @keyframes tick {
+    0% { color: var(--color-tomato); transform: translateY(-3px); }
+    100% { transform: none; }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-ivory font-sans text-ink antialiased;
+    font-feature-settings: "ss01";
+  }
+  ::selection {
+    background: var(--color-butter);
+    color: var(--color-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-tomato);
+    outline-offset: 3px;
+  }
+  [id] {
+    scroll-margin-top: 5rem;
+  }
+}
+
+/* Subtle paper grain on ivory surfaces */
+.grain {
+  background-image: radial-gradient(rgba(37, 41, 35, 0.045) 1px, transparent 1px);
+  background-size: 3px 3px;
+}
+
+/* Strip of "tape" on paper labels */
+.tape::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 54px;
+  height: 18px;
+  transform: translateX(-50%) rotate(3deg);
+  background: rgba(247, 243, 234, 0.75);
+  box-shadow: 0 1px 2px rgba(37, 41, 35, 0.12);
+}
+
+/* Perforation on the pickup pass */
+.perforation {
+  background-image: radial-gradient(circle, var(--color-ink) 1.2px, transparent 1.5px);
+  background-size: 10px 4px;
+  background-repeat: repeat-x;
+  opacity: 0.25;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
