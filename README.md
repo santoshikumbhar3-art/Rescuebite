@@ -6,7 +6,7 @@ An editorial, art-directed food-rescue marketplace for students. Built with Reac
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+np
 npm run build      # production build → dist/
 npm run preview    # serve the production build
 ```
