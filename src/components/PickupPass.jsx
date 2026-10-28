@@ -1,26 +1,39 @@
 import { QRCodeSVG } from 'qrcode.react'
-import { Check, Clock, MapPin } from 'lucide-react'
+import { Check, Clock, MapPin, CheckCircle2 } from 'lucide-react'
 import { clock, countdown, money } from '../lib/format.js'
 
 export default function PickupPass({ reservation, now, titleId, onDone }) {
-  const { listing, pin, createdAt } = reservation
+  const { listing, pin, createdAt, status, claimedAt } = reservation
   const remaining = listing.deadline - now
   const qrValue = `RESCUEBITE|DEMO|${pin}|${listing.id}|${createdAt}`
+  const isClaimed = status === 'claimed'
 
   return (
     <div className="grain px-5 pb-8 pt-10 sm:px-10 sm:pb-10">
       <div className="mx-auto max-w-2xl">
         <div className="flex items-center gap-3">
-          <span className="animate-rise grid h-9 w-9 place-items-center rounded-full bg-forest text-ivory">
-            <Check className="h-5 w-5" aria-hidden="true" />
+          <span
+            className={`animate-rise grid h-9 w-9 place-items-center rounded-full ${
+              isClaimed ? 'bg-forest text-ivory' : 'bg-tomato text-ivory'
+            }`}
+          >
+            {isClaimed ? <CheckCircle2 className="h-5 w-5" /> : <Check className="h-5 w-5" />}
           </span>
-          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-forest">Reservation confirmed · demo</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-forest">
+            {isClaimed ? 'Pickup verified & complete · demo' : 'Reservation confirmed · demo'}
+          </p>
         </div>
         <h2 id={titleId} className="mt-4 font-display text-4xl leading-[1.02] text-forest sm:text-5xl">
-          Your box is saved. <em className="text-tomato">Go get it.</em>
+          {isClaimed ? (
+            <>Box collected. <em className="text-forest">Enjoy your meal!</em></>
+          ) : (
+            <>Your box is saved. <em className="text-tomato">Go get it.</em></>
+          )}
         </h2>
         <p className="mt-3 max-w-lg text-ink/70">
-          Show this pass at the counter. The kitchen scans the QR code or checks your rescue PIN.
+          {isClaimed
+            ? 'This pass has been verified by the kitchen counter. Thank you for rescuing surplus food!'
+            : 'Show this pass at the counter. The kitchen scans the QR code or checks your rescue PIN.'}
         </p>
 
         {/* Ticket */}
@@ -45,12 +58,21 @@ export default function PickupPass({ reservation, now, titleId, onDone }) {
             </div>
 
             <div className="relative min-w-0">
-              <span
-                aria-hidden="true"
-                className="animate-stamp absolute -top-1 right-0 border-2 border-tomato px-2.5 py-1 font-display text-lg uppercase tracking-wider text-tomato"
-              >
-                Reserved
-              </span>
+              {isClaimed ? (
+                <span
+                  aria-hidden="true"
+                  className="animate-stamp absolute -top-1 right-0 border-2 border-forest bg-forest/10 px-2.5 py-1 font-display text-lg uppercase tracking-wider text-forest"
+                >
+                  ✓ Collected
+                </span>
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="animate-stamp absolute -top-1 right-0 border-2 border-tomato px-2.5 py-1 font-display text-lg uppercase tracking-wider text-tomato"
+                >
+                  Reserved
+                </span>
+              )}
 
               <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink/55">Your meal</p>
               <h3 className="mt-1 pr-32 font-display text-[1.7rem] leading-tight text-forest">{listing.name}</h3>
@@ -89,8 +111,12 @@ export default function PickupPass({ reservation, now, titleId, onDone }) {
           </div>
 
           <footer className="flex flex-wrap justify-between gap-2 border-t border-dashed border-ink/20 px-5 py-3 text-[11px] text-ink/55 sm:px-7">
-            <span>Reserved {clock(createdAt)} · Ref {reservation.id.slice(-6).toUpperCase()}</span>
-            <span>Simulated pass — no payment taken</span>
+            <span>
+              {isClaimed
+                ? `Handed over at ${clock(claimedAt || Date.now())} · Ref ${reservation.id.slice(-6).toUpperCase()}`
+                : `Reserved ${clock(createdAt)} · Ref ${reservation.id.slice(-6).toUpperCase()}`}
+            </span>
+            <span>{isClaimed ? 'Verified by Kitchen Counter' : 'Simulated pass — no payment taken'}</span>
           </footer>
         </article>
 

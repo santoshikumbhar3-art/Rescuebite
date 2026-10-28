@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test": "vitest run",
     "preview": "vite preview",
     "build:preview": "vite build --config vite.preview.config.js"
   },
   "dependencies": {
+    "canvas-confetti": "^1.9.4",
     "lucide-react": "^1.62.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.3.1",
@@ -17,9 +19,13 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@vitejs/plugin-react": "^6.1.2",
+    "jsdom": "^29.1.1",
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.5",
-    "vite-plugin-singlefile": "^2.3.4"
+    "vite-plugin-singlefile": "^2.3.4",
+    "vitest": "^5.0.5"
   }
 }

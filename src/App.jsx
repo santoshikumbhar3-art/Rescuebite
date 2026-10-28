@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Navbar from './components/Navbar.jsx'
 import Hero from './components/Hero.jsx'
 import CategoryStrip from './components/CategoryStrip.jsx'
@@ -6,9 +6,15 @@ import Impact from './components/Impact.jsx'
 import Marketplace from './components/Marketplace.jsx'
 import HowItWorks from './components/HowItWorks.jsx'
 import ReservationModal from './components/ReservationModal.jsx'
+import KitchenDashboard from './components/KitchenDashboard.jsx'
+import VerificationTerminal from './components/VerificationTerminal.jsx'
+import PostSurplusModal from './components/PostSurplusModal.jsx'
+import DemoControlBar from './components/DemoControlBar.jsx'
 import Footer from './components/Footer.jsx'
 import { CO2_PER_MEAL_KG, INITIAL_IMPACT, LISTINGS } from './data/listings.js'
 import { useNow } from './hooks/useNow.js'
+
+const STORAGE_KEY = 'RESCUEBITE_DEMO_STATE_V1'
 
 const createInitialListings = () => {
   const start = Date.now()
@@ -28,12 +34,50 @@ const makePin = (taken) => {
 
 export default function App() {
   const now = useNow(1000)
-  const [listings, setListings] = useState(createInitialListings)
-  const [impact, setImpact] = useState(INITIAL_IMPACT)
+
+  // Current active view: 'student' | 'kitchen' | 'scanner'
+  const [currentView, setCurrentView] = useState('student')
+
+  // Load from localStorage or defaults
+  const [listings, setListings] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_LISTINGS`)
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return createInitialListings()
+  })
+
+  const [impact, setImpact] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_IMPACT`)
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return INITIAL_IMPACT
+  })
+
   const [impactVersion, setImpactVersion] = useState(0)
-  const [reservations, setReservations] = useState([])
+
+  const [reservations, setReservations] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_RESERVATIONS`)
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return []
+  })
+
+  // Modals state
   // modal: { listingId, reservationId | null } | null
   const [modal, setModal] = useState(null)
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false)
+
+  // Sync to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${STORAGE_KEY}_LISTINGS`, JSON.stringify(listings))
+      localStorage.setItem(`${STORAGE_KEY}_IMPACT`, JSON.stringify(impact))
+      localStorage.setItem(`${STORAGE_KEY}_RESERVATIONS`, JSON.stringify(reservations))
+    } catch {}
+  }, [listings, impact, reservations])
 
   const openReservation = useCallback((listingId) => setModal({ listingId, reservationId: null }), [])
   const closeModal = useCallback(() => setModal(null), [])
@@ -43,7 +87,7 @@ export default function App() {
     if (latest) setModal({ listingId: latest.listing.id, reservationId: latest.id })
   }, [reservations])
 
-  // Demo-only reservation: updates local state, no network request is made.
+  // Demo reservation: updates local state & passes
   const confirmReservation = useCallback(
     (listingId) => {
       const listing = listings.find((l) => l.id === listingId)
@@ -53,6 +97,8 @@ export default function App() {
         id: `${listingId}-${Date.now()}`,
         pin: makePin(new Set(reservations.map((r) => r.pin))),
         createdAt: Date.now(),
+        status: 'reserved',
+        claimedAt: null,
         listing: { ...listing, boxes: listing.boxes - 1 },
       }
 
@@ -70,6 +116,51 @@ export default function App() {
     [listings, reservations],
   )
 
+  // Kitchen Partner: Add new surplus meal
+  const handleAddListing = useCallback((newListing) => {
+    setListings((prev) => [newListing, ...prev])
+  }, [])
+
+  // Kitchen Partner: Quick box quantity adjust
+  const handleUpdateBoxes = useCallback((listingId, newBoxes) => {
+    setListings((prev) =>
+      prev.map((l) => (l.id === listingId ? { ...l, boxes: Math.max(0, newBoxes) } : l)),
+    )
+  }, [])
+
+  // Kitchen Partner: Verify & Redeem Pass at Counter
+  const handleVerifyReservation = useCallback((reservationId) => {
+    setReservations((prev) =>
+      prev.map((r) =>
+        r.id === reservationId
+          ? { ...r, status: 'claimed', claimedAt: Date.now() }
+          : r,
+      ),
+    )
+  }, [])
+
+  // Demo Helper: Auto-create a test reservation
+  const handleSimulateReservation = useCallback(() => {
+    const available = listings.find((l) => l.boxes > 0 && l.deadline > Date.now()) || listings[0]
+    if (available) {
+      confirmReservation(available.id)
+    }
+  }, [listings, confirmReservation])
+
+  // Demo Helper: Reset all demo data
+  const handleResetDemo = useCallback(() => {
+    try {
+      localStorage.removeItem(`${STORAGE_KEY}_LISTINGS`)
+      localStorage.removeItem(`${STORAGE_KEY}_IMPACT`)
+      localStorage.removeItem(`${STORAGE_KEY}_RESERVATIONS`)
+    } catch {}
+    setListings(createInitialListings())
+    setImpact(INITIAL_IMPACT)
+    setImpactVersion((v) => v + 1)
+    setReservations([])
+    setModal(null)
+  }, [])
+
   const modalListing = modal && listings.find((l) => l.id === modal.listingId)
   const modalReservation = modal?.reservationId
     ? reservations.find((r) => r.id === modal.reservationId)
@@ -80,6 +171,11 @@ export default function App() {
     [listings, now],
   )
 
+  const pendingPickupsCount = useMemo(
+    () => reservations.filter((r) => r.status !== 'claimed').length,
+    [reservations],
+  )
+
   return (
     <>
       <a
@@ -88,16 +184,63 @@ export default function App() {
       >
         Skip to the rescue shelf
       </a>
-      <Navbar passCount={reservations.length} onOpenPass={openLatestPass} />
-      <main>
-        <Hero boxesTonight={boxesTonight} kitchens={listings.length} />
-        <CategoryStrip />
-        <Impact impact={impact} version={impactVersion} />
-        <Marketplace listings={listings} now={now} onReserve={openReservation} />
-        <HowItWorks />
+
+      {/* Top Navigation */}
+      <Navbar
+        currentView={currentView}
+        onViewChange={setCurrentView}
+        passCount={reservations.length}
+        pendingCount={pendingPickupsCount}
+        onOpenPass={openLatestPass}
+        onOpenPostModal={() => setIsPostModalOpen(true)}
+      />
+
+      {/* Dynamic Views */}
+      <main className="pb-24">
+        {currentView === 'student' && (
+          <>
+            <Hero boxesTonight={boxesTonight} kitchens={listings.length} />
+            <CategoryStrip />
+            <Impact impact={impact} version={impactVersion} />
+            <Marketplace listings={listings} now={now} onReserve={openReservation} />
+            <HowItWorks />
+          </>
+        )}
+
+        {currentView === 'kitchen' && (
+          <KitchenDashboard
+            listings={listings}
+            reservations={reservations}
+            now={now}
+            onOpenPostModal={() => setIsPostModalOpen(true)}
+            onUpdateBoxes={handleUpdateBoxes}
+            onVerifyReservation={handleVerifyReservation}
+          />
+        )}
+
+        {currentView === 'scanner' && (
+          <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+            <VerificationTerminal
+              reservations={reservations}
+              onVerifyReservation={handleVerifyReservation}
+              onClose={() => setCurrentView('student')}
+            />
+          </div>
+        )}
       </main>
+
       <Footer />
 
+      {/* Demo Floating Controller Bar */}
+      <DemoControlBar
+        currentView={currentView}
+        onViewChange={setCurrentView}
+        onResetDemo={handleResetDemo}
+        onSimulateReservation={handleSimulateReservation}
+        pendingCount={pendingPickupsCount}
+      />
+
+      {/* Student Reservation & Pass Modal */}
       {modalListing && (
         <ReservationModal
           key={modal.listingId}
@@ -108,6 +251,13 @@ export default function App() {
           onClose={closeModal}
         />
       )}
+
+      {/* Kitchen Post Surplus Modal */}
+      <PostSurplusModal
+        isOpen={isPostModalOpen}
+        onClose={() => setIsPostModalOpen(false)}
+        onAddListing={handleAddListing}
+      />
     </>
   )
 }
